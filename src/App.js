@@ -3,82 +3,98 @@ import io from 'socket.io-client';
 const socket = io.connect('http://localhost:4000');
 
 function App() {
-  const [i, seti] = useState(3);
   const [cantidadOn, setcantidadOn] = useState(0);
   const [conectado, setconectado] = useState(false);
-  const auxiliar = [
-    {mensaje: "Mensaje 0"},
-    {mensaje: "Mensaje 1"},
-    {mensaje: "Mensaje 2"}
-  ];
-  const [mensajes, setMensajes] = useState(auxiliar);
+  const [nombre, setnombre] = useState("Jugador");
+  const [jugadores, setjugadores] = useState([]);
 
   useEffect(() => {
     socket.on('actualizaCantidaOn', (data) => {
       setcantidadOn(data);
-      console.log(data)
-    })
-    //Recibe un mensaje y lo pone en el arreglo de mensajes
-    socket.on('enviar', function(data) {
-      setMensajes((dataPrevia) =>[...dataPrevia, data]);
+      let jugador = "Jugador: "+data;
+      setnombre(jugador);
     })
     //Obtiene la cantidad de usuarios conectados en la mesa
     socket.on('entrarMesa', function(data) {
       if(data.mensaje === 1){
         setcantidadOn(data.cantidad);
+        setjugadores(data.jugadoresMesa);
+        console.log(data.jugadoresMesa);
       }else{
         alert("No entraste a la mesa debido a que esta llena")
       }
-      
+    })
+
+    socket.on('jugar', (data) => {
+      setjugadores(data);
+      console.log(data);
     })
   },[])
-
-  const enviar = () =>{
-    //Enviamos un mensaje a todos los clientes
-    socket.emit('enviar', {
-      mensaje: `Mensaje ${i}`
-    })
-    seti(i+1);
-  }
+  
   const entrarMesa = (e) =>{
     //Hace algo segun si el boton entrar o salir es presionado
     if(e.target.name === "entrar"){
       setconectado(true);
-      socket.emit('entrarMesa',1);
+      setnombre("Jugador: "+cantidadOn);
+
+      socket.emit('entrarMesa',{
+        codigo: 1,
+        nombre: nombre
+      });
+      
     }
     if(e.target.name === "salir"){
       setconectado(false);
-      socket.emit('entrarMesa',0);
+      socket.emit('entrarMesa',{
+        codigo: 0,
+        nombre: nombre
+      });
     }
     
   }
+  const jugar = () => {
+    socket.emit('jugar', "asd");
+  }
+  const cambiaNombre = (e) => {
+    setnombre(e.target.value);
+    console.log(nombre)
+  }
   return (
     <div className="App">
-        <div>
-          Mensajes:
-          {
-            mensajes.map((mensaje,i) => (
-              <p key={i}>
-                {
-                  mensaje.mensaje
-                }
-              </p>
-            ))
-          }
-        </div>
-        
-        <button onClick={enviar}>Enviar</button>
-        <button disabled={!conectado} name="salir" onClick={entrarMesa}>Salir de la mesa</button>
-        <button disabled={cantidadOn>1 || conectado} name="entrar" onClick={entrarMesa}>Entrar a la mesa</button>
+      <input type="text" onChange={cambiaNombre} value={nombre}></input>
 
-        <p> 
-          Conectados en la mesa: 
-          {cantidadOn}
-        </p>
-          
-      
+      <button disabled={!conectado} name="salir" onClick={entrarMesa}>Salir de la mesa</button>
+      <button disabled={cantidadOn>2 || conectado} name="entrar" onClick={entrarMesa}>Entrar a la mesa</button>
+      <div>
+        {
+          jugadores.map((jugador, i) => (
+            <Carta jugador={jugador} key={i}/>
+          ))
+        }
+      </div>
+      <p> 
+        Conectados en la mesa: 
+        {cantidadOn}
+      </p>
+      <hr/>
+      <button onClick={jugar}>Juguemos</button>
+
     </div>
   );
 }
+
+function Carta({jugador}) {
+  return (
+    <div>
+      <h1>{jugador.nombre}</h1>
+      {
+        jugador.cartas.map((carta, i) => (
+          <h5 key={i}>{carta}</h5>
+        ))
+      }
+    </div>
+  )
+}
+
 
 export default App;
