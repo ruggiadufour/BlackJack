@@ -18,10 +18,28 @@ function App() {
   const [jugadores, setjugadores] = useState([]);
   const [croupier, setcroupier] = useState();
   const [turno, setturno] = useState(false);
+  const [tiempoReset, settiempoReset] = useState(5);
   const [id, setid] = useState("");
 
-
+ function DaleIntervalo(){
+  let ii = 4;
+  let intervalo = setInterval(()=>{
+    if(ii===0){
+      clearInterval(intervalo);
+      settiempoReset(5);
+      console.log("se paro")
+    }else{
+      console.log(ii);
+      settiempoReset(ii);
+      ii--;
+    }
+  },1000)
+ }
   useEffect(() => { 
+    socket.on('setTiempo', () => {
+
+      DaleIntervalo()  
+    })
     socket.on('actualizaCantidaOn', (data) => {
       actualizarDatos(data);
     })
@@ -115,6 +133,9 @@ function App() {
               }  
             </Paper>
           </Grid>
+          {
+            tiempoReset!==5 && <h3>La partida comienza en {tiempoReset}</h3>
+          }
           <Grid direction="row" container justify="center" spacing={2}>
           {
             jugadores.map((jugador, i) => (

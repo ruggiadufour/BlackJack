@@ -1,7 +1,6 @@
 const express = require('express');
 const app = express();
 const path = require('path');
-const { emit } = require('process');
 
 //Settings
 app.set('port', process.env.PORT || 4000);
@@ -40,17 +39,55 @@ io.on('connection', (socket) =>{
             croupier: croupier
         })
     }
+    const jugar = () =>{
+        if(turno < 2){
+            //Se reparten las cartas
+            for (let j = 0; j < 2; j++) {
+                for (let i = 0; i < jugadoresMesa.length; i++) {
+                    jugadoresMesa[i].cartas.push(Cartas.pop());
+                    jugadoresMesa[i].total +=  jugadoresMesa[i].cartas[jugadoresMesa[i].cartas.length-1];
+                    if(jugadoresMesa[i].total>21){
+                        jugadoresMesa[i].pierde = true;
+                    }
+                }
+                if(j === 1){
+                    cartaX = Cartas.pop();
+                    croupier.cartas.push(0);
+                    croupier.total = croupier.cartas[0];
+                }
+                else{
+                    croupier.cartas.push(Cartas.pop());
+                }
+
+            }
+            //Enviamos las cartas repartidas a los jugadores
+            io.sockets.emit('jugar', {
+                jugadoresMesa: jugadoresMesa,
+                croupier: croupier
+            });
+        }
+
+        //Pasamos el turno al jugador que no se haya pasado
+        let i = jugadoresMesa.findIndex((el) => el.total<21);
+        if(i != -1){
+            turno=i;
+            io.to(jugadoresMesa[i].id).emit('darTurno');
+        }
+        else
+        console.log("todos ganaron");
+    }
     const comprobarFinalizacion = () =>{
-        console.log(turno,jugadoresMesa.length)
         if(turno+1 === jugadoresMesa.length){
-            console.log("paso 1",cartaX);
-            croupier.total = croupier.cartas[0]+cartaX;
+            //Sumamos las cartas del croupier
+            croupier.total = croupier.total+cartaX;
             croupier.cartas[1] = cartaX;
             while(croupier.total<=16){
                 let pop = Cartas.pop();
                 croupier.total += pop;
                 croupier.cartas.push(pop);
             }
+
+            //Comprobamos si los jugadores ganaron al croupier
             for(let x = 0 ; x < jugadoresMesa.length; x++){
                 if(jugadoresMesa[x].total>=croupier.total && jugadoresMesa[x].total<=21 || croupier.total>21 && jugadoresMesa[x].total<=21){
                     jugadoresMesa[x].gana = true;
@@ -58,11 +95,42 @@ io.on('connection', (socket) =>{
                     jugadoresMesa[x].pierde = true;
                 }
             }
-            console.log(jugadoresMesa)
             actualizar();
+            io.sockets.emit('setTiempo');
+
+            setTimeout(()=>{
+                croupier.cartas = [];
+                croupier.total = 0;
+                turno = 0;
+
+                jugadoresMesa = jugadoresMesa.map((jugador)=>{
+                    jugador.cartas = [];
+                    jugador.total = 0;
+                    jugador.pierde = false;
+                    jugador.gana = false;
+
+                    return jugador;
+                })
+                actualizar();
+                jugar();
+            },4000);
         }else{
             turno++;
             io.to(jugadoresMesa[turno].id).emit('darTurno');
+            
+            console.log(jugadoresMesa[turno].cartas);
+            /**
+             * if(jugadoresMesa[turno].cartas){
+                turno++
+                if(turno!==jugadoresMesa.length){
+                    io.to(jugadoresMesa[turno].id).emit('darTurno');
+                }else{
+                    comprobarFinalizacion();
+                }
+            }else{
+                io.to(jugadoresMesa[turno].id).emit('darTurno');
+            }
+             */
         }
     }
     console.log("alguien se conectó, su id es: ", socket.id);
@@ -114,37 +182,7 @@ io.on('connection', (socket) =>{
     })
 
     socket.on('jugar', ()=> {
-        if(turno < 2){
-            for (let j = 0; j < 2; j++) {
-                for (let i = 0; i < jugadoresMesa.length; i++) {
-                    jugadoresMesa[i].cartas.push(Cartas.pop());
-                    jugadoresMesa[i].total +=  jugadoresMesa[i].cartas[jugadoresMesa[i].cartas.length-1];
-                    if(jugadoresMesa[i].total>21){
-                        jugadoresMesa[i].pierde = true;
-                    }
-                }
-                if(j === 1){
-                    cartaX = Cartas.pop();
-                    croupier.cartas.push(0);
-                }
-                else{
-                    croupier.cartas.push(Cartas.pop());
-                }
-
-            }
-            io.sockets.emit('jugar', {
-                jugadoresMesa: jugadoresMesa,
-                croupier: croupier
-            });
-        }
-        let i = jugadoresMesa.findIndex((el) => el.total<21);
-        if(i != -1){
-            turno=i;
-            console.log(jugadoresMesa[i].total,jugadoresMesa[i].nombre)
-            io.to(jugadoresMesa[i].id).emit('darTurno');
-        }
-        else
-        console.log("todos ganaron");
+        jugar();
     })
 
     socket.on('accionTurno', (data) =>{
