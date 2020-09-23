@@ -9,8 +9,6 @@ import Typography from '@material-ui/core/Typography';
 
 const socket = io.connect('http://localhost:4000');
  
-
-
 function App() {
   const [cantidadOn, setcantidadOn] = useState(0);
   const [conectado, setconectado] = useState(false);
@@ -18,8 +16,9 @@ function App() {
   const [jugadores, setjugadores] = useState([]);
   const [croupier, setcroupier] = useState();
   const [turno, setturno] = useState(false);
+  const [turnoColor, setturnoColor] = useState(0);
   const [tiempoReset, settiempoReset] = useState(5);
-  const [id, setid] = useState("");
+  const [juguemos, setjuguemos] = useState(false);
 
  function DaleIntervalo(){
   let ii = 4;
@@ -37,8 +36,10 @@ function App() {
  }
   useEffect(() => { 
     socket.on('setTiempo', () => {
-
       DaleIntervalo()  
+    })
+    socket.on('colorTurno', (data) => {
+      setturnoColor(data)
     })
     socket.on('actualizaCantidaOn', (data) => {
       actualizarDatos(data);
@@ -55,6 +56,7 @@ function App() {
     socket.on('jugar', (data) => {
       setjugadores(data.jugadoresMesa);
       setcroupier(data.croupier);
+      
     })
 
     socket.on('darTurno',() =>{
@@ -65,8 +67,8 @@ function App() {
   const actualizarDatos = (data) => {
     setcantidadOn(data.cantidadOn);
     setjugadores(data.jugadoresMesa);
-    console.log(data.jugadoresMesa);
     setcroupier(data.croupier);
+    setjuguemos(data.juguemos);
   }
 
   const entrarMesa = () =>{
@@ -126,10 +128,10 @@ function App() {
           </Grid>
 
           <Grid item xs={12}>
-            <Paper style={{...Estilos.paper, background:"#8CC139"}} elevation={2}>
+            <Paper style={{...Estilos.paper, background:"#64ECFF"}} elevation={2}>
               {
                 croupier &&
-                <Carta jugador={croupier}/>
+                <Ficha jugador={croupier}/>
               }  
             </Paper>
           </Grid>
@@ -140,18 +142,25 @@ function App() {
           {
             jugadores.map((jugador, i) => (
               <Grid item xs={12} sm={4}>
-                <Paper style={{...Estilos.paper, background: jugador.pierde?"red":"white"}} elevation={2}>
+                <Paper style={{...Estilos.paper, background: !jugador.pierde?jugador.gana?"lightgreen":"white":"red"}} elevation={2}>
+                  {turnoColor===i && <h2>Jugador en turno</h2>}
                   <h1>{jugador.nombre}</h1>
                   {
                     jugador.gana === true &&
                     <h1>¡Felicidades ganaste!</h1>
                   }
                   <h5>Cartas:</h5>
-                  {
-                    jugador.cartas.map((carta, i) => (
-                      <h5 key={i}>{carta}</h5>
-                    ))
-                  }
+                  <Grid container spacing={0} justify="center" alignContent="center">
+                    {
+                      jugador.cartas.map((carta, i) => (
+                        <Grid key={i} item xs={3}>
+                          <Paper style={{width:35, height:60, padding:5 ,background:"lightgray"}}>
+                            <h5>{carta[0]+""+carta[1]}</h5>
+                          </Paper>
+                        </Grid>
+                      ))
+                    }
+                  </Grid>
                   <h5>Total: {jugador.total}</h5>
                   {
                     jugador.nombre === nombre &&
@@ -168,7 +177,7 @@ function App() {
           </Grid>
 
           <Grid item xs={12}>
-            <button disabled={!conectado} onClick={jugar}>Juguemos</button>
+            <button disabled={juguemos} onClick={jugar}>Juguemos</button>
           </Grid>
         </Grid>
       </Paper>
@@ -176,16 +185,28 @@ function App() {
   );
 }
 
-function Carta({jugador}) {
+function Carta({valor}){
+  return(
+    <Grid item xs={3}>
+      <Paper style={{width:35, height:60, padding:5 ,background:"lightgray"}}>
+        <h5>{valor[0]+""+valor[1]}</h5>
+      </Paper>
+    </Grid>
+  )
+}
+
+function Ficha({jugador}) {
   return (
     <div>
       <h1>{jugador.nombre}</h1>
       <h5>Cartas:</h5>
-      {
-        jugador.cartas.map((carta, i) => (
-          <h5 key={i}>{carta}</h5>
-        ))
-      }
+      <Grid container spacing={0} justify="center" alignContent="center">
+        {
+          jugador.cartas.map((carta, i) => (
+            <Carta key={i} valor={carta}/>
+          ))
+        }
+      </Grid>
       <h5>Total: {jugador.total}</h5>
     </div>
   )
