@@ -10,6 +10,10 @@ import Typography from '@material-ui/core/Typography';
 const socket = io.connect('http://localhost:4000');
  
 function App() {
+  useEffect(async ()=>{
+    console.log(window.location.hostname)
+  },[])
+
   const [cantidadOn, setcantidadOn] = useState(0);
   const [conectado, setconectado] = useState(false);
   const [nombre, setnombre] = useState("Unnamed");
@@ -56,6 +60,7 @@ function App() {
     socket.on('jugar', (data) => {
       setjugadores(data.jugadoresMesa);
       setcroupier(data.croupier);
+      setjuguemos(data.juguemos);
       
     })
 
@@ -68,7 +73,6 @@ function App() {
     setcantidadOn(data.cantidadOn);
     setjugadores(data.jugadoresMesa);
     setcroupier(data.croupier);
-    setjuguemos(data.juguemos);
   }
 
   const entrarMesa = () =>{
@@ -89,7 +93,7 @@ function App() {
   }
 
   const jugar = () => {
-    socket.emit('jugar', "asd");
+    socket.emit('jugar');
   }
   const cambiaNombre = (e) => {
     setnombre(e.target.value);
@@ -178,6 +182,7 @@ function App() {
 
           <Grid item xs={12}>
             <button disabled={juguemos} onClick={jugar}>Juguemos</button>
+            {/*disabled={juguemos}*/}
           </Grid>
         </Grid>
       </Paper>

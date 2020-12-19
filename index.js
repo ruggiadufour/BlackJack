@@ -23,10 +23,11 @@ let cantidadOn = 0;
 let turno = 0;
 let juguemos = false;
 let mazo = [
-    [1,"c"],[2,"c"],[3,"c"],[4,"c"],[5,"c"],[6,"c"],[7,"c"],[8,"c"],[9,"c"],[10,"c"],[10,"c"],[10,"c"],[10,"c"],
-    [1,"d"],[2,"d"],[3,"d"],[4,"d"],[5,"d"],[6,"d"],[7,"d"],[8,"d"],[9,"d"],[10,"d"],[10,"d"],[10,"d"],[10,"d"],
-    [1,"t"],[2,"t"],[3,"t"],[4,"t"],[5,"t"],[6,"t"],[7,"t"],[8,"t"],[9,"t"],[10,"t"],[10,"t"],[10,"t"],[10,"t"],
-    [1,"p"],[2,"p"],[3,"p"],[4,"p"],[5,"p"],[6,"p"],[7,"p"],[8,"p"],[9,"p"],[10,"p"],[10,"p"],[10,"p"],[10,"p"],
+    
+    [1,"♥"],[2,"♥"],[3,"♥"],[4,"♥"],[5,"♥"],[6,"♥"],[7,"♥"],[8,"♥"],[9,"♥"],[10,"♥"],[10,"♥"],[10,"♥"],[10,"♥"],
+    [1,"♢"],[2,"♢"],[3,"♢"],[4,"♢"],[5,"♢"],[6,"♢"],[7,"♢"],[8,"♢"],[9,"♢"],[10,"♢"],[10,"♢"],[10,"♢"],[10,"♢"],
+    [1,"♧"],[2,"♧"],[3,"♧"],[4,"♧"],[5,"♧"],[6,"♧"],[7,"♧"],[8,"♧"],[9,"♧"],[10,"♧"],[10,"♧"],[10,"♧"],[10,"♧"],
+    [1,"♤"],[2,"♤"],[3,"♤"],[4,"♤"],[5,"♤"],[6,"♤"],[7,"♤"],[8,"♤"],[9,"♤"],[10,"♤"],[10,"♤"],[10,"♤"],[10,"♤"],
 ];
 let Cartas = fisherYates([...mazo]);
 //Algoritmo de desordenamiento de mazo
@@ -62,6 +63,7 @@ io.on('connection', (socket) =>{
     }
     const jugar = () =>{
         if(turno < 2){
+            juguemos = true;
             //Si no hay cartas, debemos obtener un nuevo mazo
             if(Cartas.length === 0){
                 Cartas = fisherYates([...mazo])
@@ -91,7 +93,7 @@ io.on('connection', (socket) =>{
             io.sockets.emit('jugar', {
                 jugadoresMesa: jugadoresMesa,
                 croupier: croupier,
-                juguemos,
+                juguemos: juguemos,
             });
         }
 
@@ -206,7 +208,6 @@ io.on('connection', (socket) =>{
             cantidadOn: cantidadOn,
             jugadoresMesa: jugadoresMesa,
             croupier: croupier,
-            juguemos: juguemos,
         }); 
     })
 
