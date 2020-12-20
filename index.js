@@ -6,7 +6,7 @@ const path = require('path');
 app.set('port', process.env.PORT || 4000);
 
 //Static files
-app.use(express.static(path.join(__dirname,'public'))); //path.join une el directorio actual con la carpeta public. Esto porque en windows y linux se utiliza / o \.
+//app.use(express.static(path.join(__dirname,'public'))); //path.join une el directorio actual con la carpeta public. Esto porque en windows y linux se utiliza / o \.
 
 //Star server
 const server = app.listen(app.get('port'), () => {
@@ -53,6 +53,8 @@ let cartaX;
 
 
 io.on('connection', (socket) =>{
+    cantidadOn++;
+
     const actualizar = () =>{
         io.sockets.emit('actualizaCantidaOn',{
             cantidadOn: cantidadOn,
@@ -62,7 +64,7 @@ io.on('connection', (socket) =>{
         })
     }
     const jugar = () =>{
-        if(turno < 2){
+        if(turno < 2 && jugadoresMesa.length!==0){
             juguemos = true;
             //Si no hay cartas, debemos obtener un nuevo mazo
             if(Cartas.length === 0){
@@ -179,7 +181,7 @@ io.on('connection', (socket) =>{
         //Si value es 1 significa que se presionó el boton salir
         if(value.codigo === 1){
             //Si la cantidad es menor, dejamos entrar sino le damos un mensaje
-            if(cantidadOn <= 5){
+            if(jugadoresMesa.length <= 5){
                 //Agrega el id de un cliente al arreglo
                 jugadoresMesa.push({
                     nombre: value.nombre,
@@ -191,7 +193,6 @@ io.on('connection', (socket) =>{
                     entraMesa: false,
                 });
                 jugadoresMesa[jugadoresMesa.length-1].total = 0;
-                cantidadOn++;
                 mensaje = 1;
                 juguemos = true;
             }else{ 
@@ -204,17 +205,31 @@ io.on('connection', (socket) =>{
             }
         }
         io.sockets.emit('entrarMesa', {
-            mensaje, mensaje,
+            mensaje: mensaje,
             cantidadOn: cantidadOn,
             jugadoresMesa: jugadoresMesa,
             croupier: croupier,
         }); 
     })
 
+    socket.on('enviarMensaje', (value) =>{
+        console.log(value.mensaje, value.nombre)
+        io.sockets.emit('actualizarMensajes', {
+            mensaje: value.mensaje,
+            nombre: value.nombre,
+        }); 
+    })
+
     //Cuando se desconecta alguien, tenemos que saber si estaba en la mesa para sacarlo
     socket.on('disconnect', () =>{
         console.log("se desconectó: ",socket.id);
-        
+        cantidadOn--;
+        io.sockets.emit('actualizaCantidaOn',{
+            cantidadOn: cantidadOn,
+            jugadoresMesa: jugadoresMesa,
+            croupier: croupier,
+            juguemos: juguemos,
+        })
         if(jugadoresMesa.some((value) => (value.id === socket.id.toString()))){
             salirMesa();
         }                 
@@ -257,37 +272,43 @@ io.on('connection', (socket) =>{
     
     const salirMesa = () => {
         //Si el jugador sale cuando es su turno debemos pasarselo al siguiente jugador
-        let estabaEnMesa = false;
+        let estabaEnTurno = false;
         if(jugadoresMesa[turno].id===socket.id.toString()){
-            estabaEnMesa = true;
+            estabaEnTurno = true;
         }
         //Saca a un cliente del arreglo cuando se desconecta
         jugadoresMesa = jugadoresMesa.filter((value) => (socket.id.toString() !== value.id));
-        
         //Decrementa la cantidad cuando el cliente sale de la sala o se desconecta
-        cantidadOn--;
-        if(estabaEnMesa && cantidadOn!==0){
-            do{
-                if(jugadoresMesa[turno].total===0){
-                    if(turno!==jugadoresMesa.length-1){
-                        turno++
+        if(jugadoresMesa.length!==0){
+            //Si el usuario estaba en turno cuando se desconectó se debe pasar el turno al siguiente
+            if(estabaEnTurno===true){
+                do{
+                    if(jugadoresMesa[turno] && jugadoresMesa[turno].total===0){
+                        if(turno!==jugadoresMesa.length-1){
+                            turno++
+                        }else{
+                            comprobarFinalizacion();
+                            break;
+                        }
                     }else{
-                        comprobarFinalizacion();
-                        break;
+                        console.log(turno, jugadoresMesa.length)
+
+                        if(turno===jugadoresMesa.length){
+                            turno--;
+                            comprobarFinalizacion();
+                        }else{
+                            io.to(jugadoresMesa[turno].id).emit('darTurno');
+                            io.sockets.emit('colorTurno', turno);
+                        }
                     }
-                }else{
-                    io.to(jugadoresMesa[turno].id).emit('darTurno');
-                    io.sockets.emit('colorTurno', turno);
-                }     
-            }while(jugadoresMesa[turno].total===0)
+                }while(jugadoresMesa[turno].total===0)
+            }
         }else{
             croupier.cartas = [];
             croupier.total = 0;
             turno = 0;
             juguemos = false;
         }
-
-        
         io.sockets.emit('actualizaCantidaOn', {
             cantidadOn: cantidadOn,
             jugadoresMesa: jugadoresMesa,
